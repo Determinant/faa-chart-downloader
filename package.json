@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "decompress": "^4.2.1",
     "jsdom": "^25.0.0",
     "moment": "^2.30.1"
   }
