@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Sources: FAA official website
 const csUrl = "https://aeronav.faa.gov/upload_313-d/supplements/";
 const tppUrl = "https://aeronav.faa.gov/upload_313-d/terminal/";
 const ifrEnrouteUrl = "https://aeronav.faa.gov/enroute/";
