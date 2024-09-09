@@ -29,7 +29,7 @@ const getChartSupplementDiretory = async () => {
                 if (files[region]) {
                     files[region].push({ url, date });
                     if (moment() >= date) {
-                        files[region].current = { url, date: m[2] };
+                        files[region].current = { url, date: date.format('YYYY-MM-DD') };
                     }
                 }
             }
@@ -66,7 +66,7 @@ const getTerminalProcedurePublication = async () => {
                                 files[region].push({ url, date });
                                 files[region].current = {
                                     url,
-                                    date: date.format("YYYYMMDD"),
+                                    date: date.format("YYYY-MM-DD"),
                                 };
                             }
                         }
@@ -87,7 +87,7 @@ const res = [
 for (let r of res) {
     for (let region of Object.keys(r.files)) {
         const cur = r.files[region].current;
-        const file = `${r.prefix}-${region}-${cur.date}.pdf`;
+        const file = `${r.prefix}-${region.toLowerCase()}-${cur.date}.pdf`;
         const fileExists = (path) =>
             fs.stat(path).then(
                 () => true,
