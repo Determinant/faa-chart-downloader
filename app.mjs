@@ -238,7 +238,11 @@ for (let r of res) {
             continue;
         }
         const date = cur.date.format("YYYY-MM-DD");
-        const file = `${cur.unzip ? zip_path : chart_path}/${r.prefix}-${region.toLowerCase()}-${date}.${cur.unzip ? "zip" : "pdf"}`;
+        const dir = `${cur.unzip ? zip_path : chart_path}/${date}`;
+        try {
+            await fs.mkdir(dir);
+        } catch (_) {}
+        const file = `${dir}/${r.prefix}-${region.toLowerCase()}.${cur.unzip ? "zip" : "pdf"}`;
         const fileExists = (path) =>
             fs.stat(path).then(
                 () => true,
@@ -257,7 +261,7 @@ for (let r of res) {
             await decompress(file, "./", {
                 filter: (f) => cur.unzip[f.path] != null,
                 map: (f) => {
-                    f.path = `${chart_path}/${r.prefix}-${region.toLowerCase()}-${date}${cur.unzip[f.path]}`;
+                    f.path = `${chart_path}/${date}/${r.prefix}-${region.toLowerCase()}${cur.unzip[f.path]}`;
                     return f;
                 },
             });
