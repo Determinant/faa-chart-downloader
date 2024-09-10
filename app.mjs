@@ -155,13 +155,13 @@ const getIFREnroute = async () => {
 const getVFR = async () => {
     const secFiles = {};
     for (const i of vfrSectional) {
-        const _region = i.replace(" ", "_");
+        const _region = i.replaceAll(" ", "_");
         secFiles[_region] = [];
         secFiles[_region].current = { date: moment(0) };
     }
     const tacFiles = {};
     for (const i of vfrTerminal) {
-        const _region = i.replace(" ", "_");
+        const _region = i.replaceAll(" ", "_");
         tacFiles[_region] = [];
         tacFiles[_region].current = { date: moment(0) };
     }
@@ -177,9 +177,9 @@ const getVFR = async () => {
                 if (moment() >= date) {
                     for (const region of vfrSectional) {
                         const unzip = {};
-                        const _region = region.replace(" ", "_");
+                        const _region = region.replaceAll(" ", "_");
                         const url = `${vfrUrl}${m[1]}/sectional-files/${_region}.zip`;
-                        unzip[`${region} SEC.tif`] = ".tif";
+                        unzip[`${_region}_SEC.tif`] = ".tif";
                         secFiles[_region].push({ url, date });
                         if (date > secFiles[_region].current.date) {
                             secFiles[_region].current = {
@@ -191,10 +191,10 @@ const getVFR = async () => {
                     }
                     for (const region of vfrTerminal) {
                         const unzip = {};
-                        const _region = region.replace(" ", "_");
+                        const _region = region.replaceAll(" ", "_");
                         const url = `${vfrUrl}${m[1]}/tac-files/${_region}_TAC.zip`;
-                        unzip[`${region} TAC.tif`] = ".tif";
-                        unzip[`${region} FLY.tif`] = "-flyway.tif";
+                        unzip[`${_region}_TAC.tif`] = ".tif";
+                        unzip[`${_region}_FLY.tif`] = "-flyway.tif";
                         tacFiles[_region].push({ url, date });
                         if (date > tacFiles[_region].current.date) {
                             tacFiles[_region].current = {
@@ -259,9 +259,9 @@ for (let r of res) {
         if (cur.unzip) {
             console.log(`extracting "${file}"`);
             await decompress(file, "./", {
-                filter: (f) => cur.unzip[f.path] != null,
+                filter: (f) => cur.unzip[f.path.replaceAll(" ", "_")] != null,
                 map: (f) => {
-                    f.path = `${chart_path}/${date}/${r.prefix}-${region.toLowerCase()}${cur.unzip[f.path]}`;
+                    f.path = `${chart_path}/${date}/${r.prefix}-${region.toLowerCase()}${cur.unzip[f.path.replaceAll(" ", "_")]}`;
                     return f;
                 },
             });
