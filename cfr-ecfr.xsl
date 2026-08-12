@@ -62,7 +62,7 @@
           .reg-tree-view .tree-child-leaves > .tree-leaf::before { content: ''; position: absolute; left: -0.75em; top: 0.83em; width: 0.75em; border-top: 1px solid #cbd5e1; }
           .reg-tree-view .tree-child-leaves > .tree-leaf:last-child::after { content: ''; position: absolute; left: -0.75em; top: 0.84em; bottom: -0.4em; width: 1px; background: #fff; }
           .reg-tree-view .tree-leaf .tree-leaf-content { position: relative; min-height: 1.35em; }
-          .reg-tree-view .tree-leaf .tree-expando { position: absolute; left: 0; top: 0.27em; float: none; width: 0.95em; height: 0.95em; line-height: 0.82em; font-size: 0.78em; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 2px; color: #334155; box-sizing: border-box; text-align: center; }
+          .reg-tree-view .tree-leaf .tree-expando { display: inline-flex; align-items: center; justify-content: center; position: absolute; left: 0; top: 0.5em; float: none; width: 0.95em; height: 0.95em; line-height: 1; padding: 0; font-size: 0.78em; background: #e2e8f0; border: 1px solid #cbd5e1; border-radius: 2px; color: #334155; box-sizing: border-box; text-align: center; }
           .reg-tree-view .tree-leaf .tree-expando:hover { background: #cbd5e1; }
           .reg-tree-view .tree-leaf .tree-leaf-text { float: none; display: block; margin-left: 1.45em; color: #111827; line-height: 1.45; white-space: normal; word-break: break-word; cursor: default; }
           .reg-tree-view .tree-leaf .tree-leaf-text:hover { color: #111827; }

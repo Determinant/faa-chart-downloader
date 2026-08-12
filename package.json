@@ -8,11 +8,11 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "node build-far.mjs --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts",
-    "build:aim": "node download-aim.mjs --output=dist/aim --clean",
-    "check": "node --check build-far.mjs && node --check download-aim.mjs && node --check lib/config.mjs && node --check lib/fs-utils.mjs && node --check lib/pwa.mjs && node --check lib/site.mjs && node --check lib/site-generator.mjs && node --check lib/site-shell.mjs && node --check lib/sources.mjs && node --check lib/xml-index.mjs && node --check lib/xml-transform.mjs",
-    "test": "node --test",
-    "download-aim": "node download-aim.mjs --output=dist/aim"
+    "build": "node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts",
+    "build:aim": "node --import=tsx download-aim.ts --output=dist/aim --clean",
+    "check": "tsc --noEmit",
+    "test": "node --import=tsx --test",
+    "download-aim": "node --import=tsx download-aim.ts --output=dist/aim"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.8",
@@ -20,5 +20,10 @@
     "minisearch": "^7.2.0",
     "sharp": "^0.34.5",
     "xpath": "^0.0.34"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
   }
 }

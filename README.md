@@ -1,6 +1,6 @@
 # FAR CFR Maker
 
-`build-far.mjs` builds FAA FAR outputs from either:
+`build-far.ts` builds FAA FAR outputs from either:
 - eCFR (`--source=ecfr`, default)
 - annual CFR from GovInfo (`--source=annual`)
 
@@ -36,7 +36,7 @@ directly from disk cannot register a service worker. External links such as FAA
 publications, search, and Google-hosted fonts remain external; the FAA AIM HTML
 pages, stylesheets, scripts, and images are downloaded locally. The command
 preserves the previous `dist/aim/` mirror in a hidden sibling directory until
-you remove it. Use `node download-aim.mjs --help` for options.
+you remove it. Use `node --import=tsx download-aim.ts --help` for options.
 
 ## Prerequisites
 
@@ -91,13 +91,13 @@ the service worker can precache every regulation page and shared asset.
 Default split mode:
 
 ```bash
-node build-far.mjs --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts
+node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts
 ```
 
 Annual CFR (GovInfo) by year:
 
 ```bash
-node build-far.mjs \
+node --import=tsx build-far.ts \
   --source=annual \
   --year=2025 \
   --combined=dist/far/combined.xml \
@@ -111,7 +111,7 @@ node build-far.mjs \
 If you already downloaded XML:
 
 ```bash
-node build-far.mjs \
+node --import=tsx build-far.ts \
   --source-xml=combined-ecfr.xml \
   --date=2026-04-30 \
   --combined=dist/far/combined.xml \
@@ -123,7 +123,7 @@ node build-far.mjs \
 Annual CFR with local source XML:
 
 ```bash
-node build-far.mjs \
+node --import=tsx build-far.ts \
   --source=annual \
   --source-xml=combined-annual.xml \
   --date=2025-01-01 \

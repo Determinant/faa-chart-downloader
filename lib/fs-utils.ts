@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 
+export function toPosixPath(value) {
+    return String(value).split(path.sep).join('/');
+}
+
 export function isStrictChildPath(parent, candidate) {
     const relative = path.relative(parent, candidate);
     return Boolean(relative)
@@ -9,7 +13,11 @@ export function isStrictChildPath(parent, candidate) {
         && !path.isAbsolute(relative);
 }
 
-export async function writeFileAtomic(filePath, data, encoding = 'utf8') {
+export async function writeFileAtomic(
+    filePath: string,
+    data: string | Uint8Array,
+    encoding: BufferEncoding = 'utf8'
+) {
     const absolutePath = path.resolve(filePath);
     const parentDir = path.dirname(absolutePath);
     const temporaryPath = path.join(
@@ -19,7 +27,9 @@ export async function writeFileAtomic(filePath, data, encoding = 'utf8') {
 
     await fs.mkdir(parentDir, { recursive: true });
     try {
-        await fs.writeFile(temporaryPath, data, encoding);
+        // Node ignores the encoding for byte data; retain the original call
+        // shape while accommodating its overloaded TypeScript signature.
+        await fs.writeFile(temporaryPath, data as any, encoding);
         await fs.rename(temporaryPath, absolutePath);
     } finally {
         await fs.rm(temporaryPath, { force: true }).catch(() => {});

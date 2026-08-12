@@ -62,6 +62,12 @@ async function fetchAnnualCfrVolumeXml({ year, title, chapter, volume }) {
     const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
     if (!res.ok) {
+        if (res.status === 404) {
+            throw new Error(
+                `GovInfo has no annual CFR file for ${year}, Title ${title}, volume ${volume}, Chapter ${chapter}: ${url}. `
+                + 'The annual volume may not have been published yet; use --source=ecfr for a current snapshot or choose an available annual year.'
+            );
+        }
         throw new Error(`Failed to fetch ${url}: HTTP ${res.status}`);
     }
     if (/text\/html/.test(contentType)) {

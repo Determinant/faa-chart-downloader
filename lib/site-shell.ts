@@ -1,5 +1,5 @@
-import { FAR_NARROW_BREAKPOINT } from './config.mjs';
-import { seqnumIdFromSectno } from './xml-index.mjs';
+import { FAR_NARROW_BREAKPOINT } from './config.ts';
+import { seqnumIdFromSectno } from './xml-index.ts';
 
 function escapeHtml(value) {
     return String(value || '')
@@ -82,9 +82,8 @@ const SHELL_LAYOUT_CSS = `    :root { color-scheme: light; --far-ink: #172033; -
 function buildShellSidebarHtml({ title, chapter, sourceDescription, scopeDescription, itemHtml }) {
     return `
       <div id="mobilebar">
-        <button id="mobileTocToggle" class="mobilebar-button" type="button" aria-controls="sidebar" aria-expanded="false">☰ <span>TOC</span></button>
         <div class="mobilebar-title">Federal Aviation Regulations</div>
-        <button id="mobileSearchToggle" class="mobilebar-button" type="button" aria-controls="searchInput" aria-expanded="false">Search</button>
+        <button id="mobileTocToggle" class="mobilebar-button" type="button" aria-label="Open table of contents and search" aria-controls="sidebar" aria-expanded="false">☰</button>
       </div>
       <div id="sidebarBackdrop" aria-hidden="true"></div>
       <aside id="sidebar">
@@ -116,7 +115,6 @@ const SHELL_SEARCH_SCRIPT = `  <script>
       var sidebar = document.getElementById('sidebar');
       var backdrop = document.getElementById('sidebarBackdrop');
       var tocToggle = document.getElementById('mobileTocToggle');
-      var searchToggle = document.getElementById('mobileSearchToggle');
       var closeButton = document.getElementById('sidebarClose');
       var input = document.getElementById('searchInput');
       var clearButton = document.getElementById('searchClear');
@@ -264,14 +262,12 @@ const SHELL_SEARCH_SCRIPT = `  <script>
         return narrowQuery ? narrowQuery.matches : window.innerWidth <= ${FAR_NARROW_BREAKPOINT};
       }
 
-      function setDrawer(open, focusSearch) {
+      function setDrawer(open) {
         if (!isNarrow()) return;
-        if (open) lastDrawerTrigger = focusSearch ? searchToggle : tocToggle;
+        if (open) lastDrawerTrigger = tocToggle;
         document.body.classList.toggle('toc-open', open);
         tocToggle && tocToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        searchToggle && searchToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
         sidebar.setAttribute('aria-hidden', open ? 'false' : 'true');
-        if (open && focusSearch) window.setTimeout(function () { input.focus(); }, 40);
         if (!open && lastDrawerTrigger && typeof lastDrawerTrigger.focus === 'function') {
           var trigger = lastDrawerTrigger;
           lastDrawerTrigger = null;
@@ -280,19 +276,18 @@ const SHELL_SEARCH_SCRIPT = `  <script>
       }
 
       function closeDrawer() {
-        setDrawer(false, false);
+        setDrawer(false);
       }
 
-      function openDrawer(focusSearch) {
-        setDrawer(true, focusSearch);
+      function openDrawer() {
+        setDrawer(true);
       }
 
       window.__FAR_CLOSE_DRAWER = closeDrawer;
       window.__FAR_OPEN_DRAWER = openDrawer;
       if (isNarrow()) sidebar.setAttribute('aria-hidden', 'true');
 
-      tocToggle && tocToggle.addEventListener('click', function () { openDrawer(false); });
-      searchToggle && searchToggle.addEventListener('click', function () { openDrawer(true); });
+      tocToggle && tocToggle.addEventListener('click', openDrawer);
       closeButton && closeButton.addEventListener('click', closeDrawer);
       backdrop && backdrop.addEventListener('click', closeDrawer);
       document.addEventListener('keydown', function (event) {
@@ -424,6 +419,13 @@ function buildSidebarItemsHtml(parts) {
     return parts.map(part => {
         const titleText = part.heading ? `${part.ear} — ${part.heading}` : part.ear;
         const topSectionItems = part.topSections.map(sec => `              ${renderNavSectionLink(part.href, sec)}`).join('\n');
+        const topSubjectGroupItems = (part.topSubjectGroups || []).map(group => {
+            const groupSections = group.sections.map(sec => `                  ${renderNavSectionLink(part.href, sec, 'toc-subjgrp-section')}`).join('\n');
+            return `              <li class="toc-subjgrp-block">\n` +
+                `                <div class="toc-subjgrp-title">${escapeHtml(group.title)}</div>\n` +
+                `                <ul class="toc-subjgrp-list">\n${groupSections}\n                </ul>\n` +
+                `              </li>`;
+        }).join('\n');
         const subpartItems = part.subparts.map(subpart => {
             const sections = subpart.sections.map(sec => `                  ${renderNavSectionLink(part.href, sec, 'toc-subpart-section')}`).join('\n');
             const subjgrpItems = subpart.subjgrps.map(group => {
@@ -444,7 +446,7 @@ function buildSidebarItemsHtml(parts) {
         return `          <li class="toc-part-block">\n` +
             `            <div class="toc-part-title"><a href="${escapeHtml(part.href)}" target="partView">${escapeHtml(titleText)}</a></div>\n` +
             `            <ul class="toc-sublist">\n` +
-            `${topSectionItems}${topSectionItems && subpartItems ? '\n' : ''}${subpartItems}\n` +
+            `${topSectionItems}${topSectionItems && (topSubjectGroupItems || subpartItems) ? '\n' : ''}${topSubjectGroupItems}${topSubjectGroupItems && subpartItems ? '\n' : ''}${subpartItems}\n` +
             `            </ul>\n` +
             `          </li>`;
     }).join('\n');

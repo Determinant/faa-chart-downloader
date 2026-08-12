@@ -6,10 +6,8 @@ import {
     TREEVIEW_VENDOR_CSS_SRC,
     TREEVIEW_VENDOR_CSS_DST,
     MINISEARCH_VENDOR_JS_SRC
-} from './config.mjs';
-import {
-    buildSplitIndexHtml
-} from './site-shell.mjs';
+} from './config.ts';
+export { buildSplitIndexHtml } from './site-shell.ts';
 
 async function ensureTreeViewVendorAssets(baseDir = '.') {
     const vendorDir = path.resolve(baseDir, path.dirname(TREEVIEW_VENDOR_JS_DST));
@@ -65,6 +63,5 @@ function preparePartHtmlForSplitShell(html, vendorHref = 'vendor') {
 export {
     ensureTreeViewVendorAssets,
     readMiniSearchVendorAsset,
-    preparePartHtmlForSplitShell,
-    buildSplitIndexHtml
+    preparePartHtmlForSplitShell
 };

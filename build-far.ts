@@ -14,28 +14,28 @@ import {
     parseYear,
     parseVolumes,
     parseDate
-} from './lib/config.mjs';
+} from './lib/config.ts';
 import {
     resolveLatestDateForTitle,
     loadEcfrSourceXml,
     loadAnnualSourceXml
-} from './lib/sources.mjs';
+} from './lib/sources.ts';
 import {
     filterByVolumes,
     filterByKeepParts,
     convertEcfrToGovInfoLikeXml,
     filterFarXmlByKeepParts,
     resolveAnnualDisplayDate
-} from './lib/xml-transform.mjs';
-import { generateSplitPartSite } from './lib/site-generator.mjs';
-import { isStrictChildPath, writeFileAtomic } from './lib/fs-utils.mjs';
+} from './lib/xml-transform.ts';
+import { generateSplitPartSite } from './lib/site-generator.ts';
+import { isStrictChildPath, writeFileAtomic } from './lib/fs-utils.ts';
 
 async function main() {
     const args = parseCliArgs(process.argv.slice(2));
     validateCliArgs(args);
 
     if (args.flags.has('--help') || args.flags.has('-h')) {
-        console.log('Usage: node build-far.mjs [--source=ecfr|annual] [--date=YYYY-MM-DD] [--year=YYYY]');
+        console.log('Usage: node --import=tsx build-far.ts [--source=ecfr|annual] [--date=YYYY-MM-DD] [--year=YYYY]');
         console.log('       [--vols=1,2,3] [--title=14] [--chapter=I]');
         console.log('       [--source-xml=chapter.xml] [--combined=dist/far/combined-ecfr.xml] [--far=dist/far/far-ecfr.xml] [--html=dist/far/index.html] [--xsl=cfr-ecfr.xsl]');
         console.log('       [--parts-dir=dist/far/far-parts]');

@@ -5,28 +5,24 @@ import { promisify } from 'util';
 import {
     TREEVIEW_VENDOR_JS_DST,
     TREEVIEW_VENDOR_CSS_DST
-} from './config.mjs';
-import { buildSinglePartFarXmlByIndex, stripXmlDeclaration } from './xml-transform.mjs';
+} from './config.ts';
+import { buildSinglePartFarXmlByIndex, parseXml, stripXmlDeclaration } from './xml-transform.ts';
 import {
     extractPartEntries,
     extractNavigationParts,
     extractSearchEntries,
     seqnumIdFromSectno
-} from './xml-index.mjs';
-import { addPwaMetadata, writeFarPwaFiles } from './pwa.mjs';
-import { isStrictChildPath, replaceDirectoryAtomically, writeFileAtomic } from './fs-utils.mjs';
+} from './xml-index.ts';
+import { addPwaMetadata, writeFarPwaFiles } from './pwa.ts';
+import { isStrictChildPath, replaceDirectoryAtomically, toPosixPath, writeFileAtomic } from './fs-utils.ts';
 import {
     ensureTreeViewVendorAssets,
     readMiniSearchVendorAsset,
-    preparePartHtmlForSplitShell,
-    buildSplitIndexHtml
-} from './site.mjs';
+    preparePartHtmlForSplitShell
+} from './site.ts';
+import { buildSplitIndexHtml } from './site-shell.ts';
 
 const execFileAsync = promisify(execFile);
-
-function toPosix(value) {
-    return String(value).split(path.sep).join('/');
-}
 
 async function renderXmlToHtml({ xslPath, xmlPath, htmlPath }) {
     const { stdout } = await execFileAsync('xsltproc', [xslPath, xmlPath], {
@@ -50,16 +46,19 @@ async function generateSplitPartSite({ farXml, htmlPath, xslPath, title, chapter
     const partsDir = await fs.mkdtemp(
         path.join(path.dirname(configuredPartsDir), `.${baseName}-parts-build-`)
     );
-    const partsDirName = toPosix(path.relative(outputDir, finalPartsDir));
-    const vendorRelativeRoot = toPosix(path.relative(finalPartsDir, outputDir));
+    const partsDirName = toPosixPath(path.relative(outputDir, finalPartsDir));
+    const vendorRelativeRoot = toPosixPath(path.relative(finalPartsDir, outputDir));
     const splitVendorHref = `${vendorRelativeRoot ? `${vendorRelativeRoot}/` : ''}vendor`;
     let partsCommitted = false;
 
     try {
         await ensureTreeViewVendorAssets(outputDir);
         const searchVendorJs = await readMiniSearchVendorAsset();
-        const entries = extractPartEntries(farXml);
-        const navParts = extractNavigationParts(farXml, entries);
+        // Parse the normalized FAR once for all index/navigation/search data.
+        // Part rendering still reparses each isolated part below by design.
+        const farDoc = parseXml(farXml);
+        const entries = extractPartEntries(farDoc);
+        const navParts = extractNavigationParts(farDoc, entries);
         const buildNonce = String(Date.now());
         if (entries.length === 0) throw new Error('No PART nodes found in FAR XML; cannot split by part.');
 
@@ -93,7 +92,7 @@ async function generateSplitPartSite({ farXml, htmlPath, xslPath, title, chapter
             href: hrefByIndex.get(part.index) || `${partsDirName}/${part.basename}.html?v=${buildNonce}`
         }));
         const renderedScopeDescription = `${scopeDescription}; parts ${publicParts.map(part => part.partNumber).join(', ')}`;
-        const searchEntries = extractSearchEntries(farXml).flatMap(entry => {
+        const searchEntries = extractSearchEntries(farDoc).flatMap(entry => {
             const part = publicParts[entry.partIndex];
             if (!part) return [];
             return [{

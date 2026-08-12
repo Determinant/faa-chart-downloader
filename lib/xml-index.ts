@@ -1,5 +1,14 @@
 import xpath from 'xpath';
-import { parseXml, normalizeWhitespace, getPartNumberFromEar } from './xml-transform.mjs';
+import {
+    parseXml,
+    getPartNumberFromHeading,
+    normalizePartNumber
+} from './xml-transform.ts';
+import { normalizeWhitespace } from './xml-utils.ts';
+
+function asDocument(xmlOrDocument) {
+    return typeof xmlOrDocument === 'string' ? parseXml(xmlOrDocument) : xmlOrDocument;
+}
 
 function sanitizeFileComponent(value) {
     return String(value || '')
@@ -10,14 +19,16 @@ function sanitizeFileComponent(value) {
 }
 
 function extractPartEntries(farXml) {
-    const doc = parseXml(farXml);
-    const partNodes = xpath.select('//PART', doc);
+    const doc = asDocument(farXml);
+    const partNodes = selectPartNodes(doc);
     const usedBasenames = new Map();
 
     return partNodes.map((partNode, index) => {
         const ear = normalizeWhitespace(xpath.select1('string(./EAR)', partNode));
         const heading = normalizeWhitespace(xpath.select1('string(./HD)', partNode));
-        const partNumber = getPartNumberFromEar(ear) || String(index + 1);
+        const partNumber = normalizePartNumber(ear) ||
+            getPartNumberFromHeading(heading) ||
+            String(index + 1);
 
         let basename = `part-${sanitizeFileComponent(partNumber) || String(index + 1)}`;
         const seen = usedBasenames.get(basename) || 0;
@@ -49,13 +60,19 @@ function extractSectionsFromContainer(node) {
 }
 
 function extractNavigationParts(farXml, partEntries) {
-    const doc = parseXml(farXml);
-    const partNodes = xpath.select('//PART', doc);
+    const doc = asDocument(farXml);
+    const partNodes = selectPartNodes(doc);
 
     return partNodes.map((partNode, index) => {
         const entry = partEntries[index];
         const contents = xpath.select1('./CONTENTS', partNode);
         const topSections = contents ? extractSectionsFromContainer(contents) : [];
+        const topSubjectGroups = contents
+            ? xpath.select('./SUBJGRP', contents).map(subjNode => ({
+                title: normalizeWhitespace(xpath.select1('string(./HD)', subjNode)),
+                sections: extractSectionsFromContainer(subjNode)
+            }))
+            : [];
         const subparts = contents
             ? xpath.select('./SUBPART', contents).map(subpartNode => {
                 const title = normalizeWhitespace(xpath.select1('string(./HD)', subpartNode));
@@ -71,14 +88,29 @@ function extractNavigationParts(farXml, partEntries) {
         return {
             ...entry,
             topSections,
+            topSubjectGroups,
             subparts
         };
     });
 }
 
+function collectTextContent(node, chunks = []) {
+    if (!node) return chunks;
+    if (node.nodeType === 3 || node.nodeType === 4) {
+        if (node.data) chunks.push(node.data);
+        return chunks;
+    }
+    let child = node.firstChild;
+    while (child) {
+        collectTextContent(child, chunks);
+        child = child.nextSibling;
+    }
+    return chunks;
+}
+
 function extractSearchEntries(farXml) {
-    const doc = parseXml(farXml);
-    const partNodes = xpath.select('//PART', doc);
+    const doc = asDocument(farXml);
+    const partNodes = selectPartNodes(doc);
 
     return partNodes.flatMap((partNode, partIndex) => {
         const partHeading = normalizeWhitespace(xpath.select1('string(./HD)', partNode));
@@ -86,20 +118,7 @@ function extractSearchEntries(farXml) {
             const sectno = normalizeWhitespace(xpath.select1('string(./SECTNO)', sectionNode));
             if (!sectno) return null;
 
-            const chunks = [];
-            const collectText = node => {
-                if (!node) return;
-                if (node.nodeType === 3 || node.nodeType === 4) {
-                    if (node.data) chunks.push(node.data);
-                    return;
-                }
-                let child = node.firstChild;
-                while (child) {
-                    collectText(child);
-                    child = child.nextSibling;
-                }
-            };
-            collectText(sectionNode);
+            const chunks = collectTextContent(sectionNode);
 
             return {
                 partIndex,
@@ -112,6 +131,10 @@ function extractSearchEntries(farXml) {
             };
         }).filter(Boolean);
     });
+}
+
+function selectPartNodes(doc) {
+    return xpath.select('//PART[not(RESERVED)]', doc);
 }
 
 export {
