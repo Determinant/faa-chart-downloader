@@ -1,185 +1,202 @@
-# FAR CFR Maker
+# FAA Downloader
 
-`build-far.ts` builds FAA FAR outputs from either:
-- eCFR (`--source=ecfr`, default)
-- annual CFR from GovInfo (`--source=annual`)
+FAA Downloader is a collection of build tools for creating local, offline-friendly copies of FAA reference material:
 
-It generates the FAR site under `dist/far/`:
-- `dist/far/combined.xml` (source XML after volume filtering/merge for the selected source)
-- `dist/far/far.xml` (normalized FAR XML)
-- `dist/far/index.html` (browsable PWA entry point)
+- FAR: a responsive, searchable PWA generated from Title 14 CFR data.
+- AIM: a local mirror of the FAA Aeronautical Information Manual HTML site.
+- Charts: a downloader and GDAL-based tiler for current FAA aeronautical charts.
 
-Generated FAR sites also include install metadata, iOS/Android icons, and a
-service worker. The split site precaches the shell, part pages, and shared
-vendor assets. Serve the output over HTTPS or `localhost` for Add to Home
-Screen and offline behavior.
-The shell adapts its two-column layout to narrow screens, where the table of
-contents becomes a slide-in drawer. Its local search covers section numbers,
-subjects, hierarchy, and the full section text embedded in the shell. MiniSearch
-is installed from npm and bundled into the generated shell, so the PWA has no
-CDN or search-network dependency.
+The generated data is intended for personal reference and offline use. It is not an official FAA publication and should not replace current FAA source material, notices, or operational requirements.
 
-## AIM Mirror
+## What it builds
 
-FAA publishes the Aeronautical Information Manual as a multi-page HTML site. The
-downloader mirrors the FAA AIM pages and same-site assets into `dist/aim/`,
-rewriting same-site links to work locally:
+| Command | Product | Output |
+| --- | --- | --- |
+| npm run build | FAR PWA from the current eCFR snapshot | dist/far/ |
+| npm run build:aim | Offline-capable AIM mirror | dist/aim/ |
+| npm run build:charts | Current FAA chart downloads and WebP MBTiles | dist/charts/, dist/zips/ |
 
-```bash
-npm run build:aim
-```
+The three builders are independent. Run only the product you need, or build all three into the shared dist/ directory.
 
-The generated mirror also includes install metadata, 192/512px icons, and a
-service worker for offline use after pages have been visited. Install behavior
-requires serving `dist/aim/` over HTTPS (or `localhost`); opening `index.html`
-directly from disk cannot register a service worker. External links such as FAA
-publications, search, and Google-hosted fonts remain external; the FAA AIM HTML
-pages, stylesheets, scripts, and images are downloaded locally. The command
-preserves the previous `dist/aim/` mirror in a hidden sibling directory until
-you remove it. Use `node --import=tsx download-aim.ts --help` for options.
+## Data sources
 
-## Prerequisites
+- FAR current snapshots: [eCFR](https://www.ecfr.gov/)
+- FAR annual editions: [GovInfo CFR collection](https://www.govinfo.gov/app/collection/cfr)
+- AIM: [FAA AIM HTML publication](https://www.faa.gov/air_traffic/publications/atpubs/aim_html/)
+- Charts: [FAA Aeronautical Information Services](https://aeronav.faa.gov/)
 
-- Node.js 18+
-- npm dependencies
-- `xsltproc` on PATH
+The source date and scope are written into the generated FAR interface. Chart downloads are selected from the latest available FAA directory entries; if FAA has not published a requested regional file for that edition, the builder reports a warning and continues.
 
-```bash
+## Quick start
+
+Requirements:
+
+- Node.js 18 or newer
+- npm
+- xsltproc on PATH for FAR generation
+- GDAL CLI tools on PATH for chart tiling: gdalinfo, gdal_translate, gdalwarp, and gdaladdo
+
+Install dependencies and run the checks:
+
+~~~bash
 npm ci
 npm run check
-```
+npm test
+~~~
 
-## Build the PWA
+Build a product:
 
-The default build resolves the current eCFR source and writes the FAR PWA under
-`dist/far/`:
+~~~bash
+npm run build          # FAR PWA
+npm run build:aim      # AIM mirror
+npm run build:charts   # FAA charts and MBTiles
+~~~
 
-```bash
-npm run build
-```
+On NixOS, the external command-line prerequisites can be provided with:
 
-Build the AIM mirror with:
+~~~bash
+nix-shell -p libxslt gdal
+~~~
 
-```bash
-npm run build:aim
-```
+## FAR PWA
 
-Use npm argument forwarding for a local source or other generator options:
+npm run build fetches the current eCFR XML for Title 14, filters it to the configured volumes and parts, and generates a split FAR site under dist/far/.
 
-```bash
+The output includes:
+
+- index.html, the PWA shell and entry point
+- far-parts/, one HTML page per included part
+- vendor/, locally bundled TreeView assets
+- manifest.webmanifest, icons, and service-worker.js
+- normalized and combined XML build intermediates
+
+The interface is designed for desktop and narrow screens. On phones and small tablets, the table of contents and search are available from the right-side menu. Search is local: the generated corpus is embedded in the shell and indexed in the browser with MiniSearch, so no search server or CDN is required.
+
+Serve dist/far/ from localhost or HTTPS to test installation and service-worker behavior. Upload the complete directory for deployment; uploading only index.html will cause part-page or asset 404s.
+
+### FAR source options
+
+The npm script accepts the same options as build-far.ts through npm argument forwarding:
+
+~~~bash
+npm run build -- --source=ecfr --vols=1,2,3
+npm run build -- --source=annual --year=2025
 npm run build -- --source-xml=combined-ecfr.xml --date=2026-04-30
-```
+~~~
 
-The generated search corpus is embedded in `dist/far/index.html` and indexed
-locally in the browser with the bundled MiniSearch runtime; no search request
-or CDN is needed.
+Useful options:
 
-NixOS:
-
-```bash
-nix-shell -p libxslt
-```
-
-## FAR Output
-
-The FAR build produces `dist/far/index.html` plus one HTML page per included
-part under `dist/far/far-parts/`. Upload the complete `dist/far/` directory so
-the service worker can precache every regulation page and shared asset.
-
-## Quick Start
-
-Default split mode:
-
-```bash
-node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts
-```
-
-Annual CFR (GovInfo) by year:
-
-```bash
-node --import=tsx build-far.ts \
-  --source=annual \
-  --year=2025 \
-  --combined=dist/far/combined.xml \
-  --far=dist/far/far.xml \
-  --html=dist/far/index.html \
-  --parts-dir=dist/far/far-parts
-```
-
-## Local Source XML
-
-If you already downloaded XML:
-
-```bash
-node --import=tsx build-far.ts \
-  --source-xml=combined-ecfr.xml \
-  --date=2026-04-30 \
-  --combined=dist/far/combined.xml \
-  --far=dist/far/far.xml \
-  --html=dist/far/index.html \
-  --parts-dir=dist/far/far-parts
-```
-
-Annual CFR with local source XML:
-
-```bash
-node --import=tsx build-far.ts \
-  --source=annual \
-  --source-xml=combined-annual.xml \
-  --date=2025-01-01 \
-  --combined=dist/far/combined.xml \
-  --far=dist/far/far.xml \
-  --html=dist/far/index.html \
-  --parts-dir=dist/far/far-parts
-```
-
-## Deploy Checklist
-
-FAR split mode upload: upload the contents of `dist/far/`, including:
-- `index.html`
-- `far-parts/` (part pages)
-- `vendor/` (shared TreeView assets)
-- `manifest.webmanifest`, `service-worker.js`, and `icons/`
-
-AIM upload: upload the contents of `dist/aim/`, with `index.html` as its
-entry point.
-
-## CLI Options
-
-```text
+~~~text
 --source=ecfr|annual
 --date=YYYY-MM-DD
 --year=YYYY
 --vols=1,2,3
 --title=14
 --chapter=I
---source-xml=chapter.xml
---combined=dist/far/combined-ecfr.xml
---far=dist/far/far-ecfr.xml
---html=dist/far/index.html
---xsl=cfr-ecfr.xsl
---parts-dir=dist/far/far-ecfr-parts
+--source-xml=FILE
+--combined=FILE
+--far=FILE
+--html=FILE
+--xsl=FILE
+--parts-dir=DIR
 --help / -h
-```
+~~~
 
-Notes:
-- `--source=ecfr` is the default mode.
-- For `--source=annual` network fetches, `--year` is required unless `--source-xml` is provided.
-- If `--date` is omitted in eCFR mode, the latest eCFR date for the title is resolved automatically.
-- When eCFR XML is supplied with `--source-xml`, the build stays offline; if no date is provided, the UI identifies the source as eCFR XML with an unspecified snapshot date.
-- Hash bookmarks are supported (`#target=...` and legacy `#seqnum...` links).
+The default XSLT template is cfr-ecfr.xsl at the repository root. It is a source asset used during the build, not generated output.
+
+For a fully local FAR build, provide --source-xml and an explicit --date; no source download is then required.
+
+## AIM mirror
+
+npm run build:aim downloads the FAA AIM HTML pages and same-site assets into dist/aim/. It rewrites local links so the mirror can be browsed from its index.html entry point and adds install metadata, icons, and a service worker.
+
+The mirror preserves external links such as FAA publications, FAA search, and Google-hosted fonts. Service-worker installation requires localhost or HTTPS; opening the file directly from disk cannot register it.
+
+Options are available with:
+
+~~~bash
+node --import=tsx download-aim.ts --help
+~~~
+
+For example:
+
+~~~bash
+npm run build:aim -- --concurrency=8
+~~~
+
+The --clean option used by the npm build replaces an existing mirror only after a successful staged download. A previous mirror is retained temporarily as a hidden sibling during the replacement process.
+
+## FAA charts
+
+npm run build:charts discovers the latest available FAA editions, downloads PDFs and ZIP archives, extracts the required GeoTIFFs, and creates WebP MBTiles for raster charts.
+
+Output is organized by publication date:
+
+~~~text
+dist/
+├── charts/
+│   └── YYYY-MM-DD/
+│       ├── *.pdf
+│       ├── *.tif
+│       └── *.mbtiles
+└── zips/
+    └── YYYY-MM-DD/
+        └── *.zip
+~~~
+
+The ZIP files are reused on subsequent runs. Generated chart data is ignored by Git because a complete collection is several gigabytes. The chart builder currently produces the download and tile data; it does not provide a chart-viewer PWA.
+
+To tile one existing TIFF without downloading anything:
+
+~~~bash
+npm run tile:chart -- --tile=dist/charts/YYYY-MM-DD/chart.tif
+~~~
+
+The TypeScript tiler preserves the specialized IFR crop windows, expands palette imagery when necessary, reprojects to EPSG:3857, writes WebP MBTiles, and builds overview levels.
+
+## Repository layout
+
+~~~text
+build-far.ts          FAR source/build entry point
+download-aim.ts       AIM mirror entry point
+download-charts.ts    Chart download and MBTiles entry point
+cfr-ecfr.xsl           FAR XML-to-HTML source template
+lib/                   FAR parsing, transformation, site, and PWA modules
+test/                  Automated tests
+dist/                  Generated products; ignored by Git
+~~~
+
+## Development
+
+Run the normal validation commands before making a commit:
+
+~~~bash
+npm run check
+npm test
+git diff --check
+~~~
+
+Build outputs, chart archives, and downloaded chart data are intentionally not committed. The source repository contains the builders, templates, tests, and configuration needed to reproduce them.
 
 ## Troubleshooting
 
-`xsltproc: command not found`
-- Install/provide `xsltproc` (`libxslt` on NixOS).
+xsltproc: command not found
 
-Right pane shows 404 after deploy
-- You likely uploaded only `index.html` in FAR split mode.
-- Upload `far-parts/` and `vendor/` too, along with the manifest, service worker, and icons.
+- Install/provide libxslt and ensure xsltproc is on PATH.
 
-`fetch failed` / `EAI_AGAIN` (network/DNS issue)
-- Retry later or run with `--source-xml=...` and `--date=...`.
+GDAL driver error for WebP or MBTiles
 
-Tree/collapsible UI missing
-- Run `npm install` so `js-treeview` assets are available during generation.
+- Install GDAL with WebP and MBTiles support.
+- Confirm with gdalinfo --formats.
+
+FAR part pages return 404 after deployment
+
+- Upload the complete dist/far/ directory, including far-parts/, vendor/, the manifest, service worker, and icons.
+
+The AIM service worker does not install
+
+- Serve dist/aim/ through localhost or HTTPS. Service workers do not install from file:// URLs.
+
+Network or DNS errors
+
+- Retry the build, or use FAR --source-xml mode with a local XML snapshot.

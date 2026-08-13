@@ -1,8 +1,8 @@
 {
-  "name": "far-cfr-maker",
+  "name": "faa-downloader",
   "version": "1.0.0",
   "private": true,
-  "description": "Build an offline-capable, responsive PWA for Title 14 Federal Aviation Regulations.",
+  "description": "Build offline-friendly FAA FAR, AIM, and chart products.",
   "type": "module",
   "engines": {
     "node": ">=18"
@@ -10,13 +10,17 @@
   "scripts": {
     "build": "node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts",
     "build:aim": "node --import=tsx download-aim.ts --output=dist/aim --clean",
+    "build:charts": "node --import=tsx download-charts.ts --output=dist",
     "check": "tsc --noEmit",
     "test": "node --import=tsx --test",
-    "download-aim": "node --import=tsx download-aim.ts --output=dist/aim"
+    "download-aim": "node --import=tsx download-aim.ts --output=dist/aim",
+    "tile:chart": "node --import=tsx download-charts.ts"
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.8",
+    "decompress": "^4.2.1",
     "js-treeview": "^1.1.5",
+    "jsdom": "^25.0.0",
     "minisearch": "^7.2.0",
     "sharp": "^0.34.5",
     "xpath": "^0.0.34"
