@@ -5,7 +5,7 @@
   "description": "Build offline-friendly FAA FAR, AIM, and chart products.",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20.9"
   },
   "scripts": {
     "build": "node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts",
@@ -17,12 +17,12 @@
     "tile:chart": "node --import=tsx download-charts.ts"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.9.8",
+    "@xmldom/xmldom": "^0.9.12",
     "decompress": "^4.2.1",
     "js-treeview": "^1.1.5",
     "jsdom": "^25.0.0",
     "minisearch": "^7.2.0",
-    "sharp": "^0.34.5",
+    "sharp": "^0.35.4",
     "xpath": "^0.0.34"
   },
   "devDependencies": {

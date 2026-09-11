@@ -4,12 +4,17 @@ import sharp from 'sharp';
 import { toPosixPath, writeFileAtomic } from './fs-utils.ts';
 
 const FAR_THEME_COLOR = '#0b3954';
+const FAR_PWA_ID = './far-pwa';
 const FAR_ICON_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="${FAR_THEME_COLOR}"/>
-  <circle cx="256" cy="256" r="176" fill="#fff" stroke="#f5c242" stroke-width="18"/>
-  <path d="M142 300h228M174 300v-72l82-54 82 54v72M210 300v-56h92v56" fill="none" stroke="${FAR_THEME_COLOR}" stroke-width="22" stroke-linejoin="round"/>
-  <text x="256" y="370" fill="${FAR_THEME_COLOR}" font-family="Arial, sans-serif" font-size="66" font-weight="700" text-anchor="middle">FAR</text>
+  <rect width="512" height="512" fill="${FAR_THEME_COLOR}"/>
+  <path d="M0 382 256 338l256 44v130H0z" fill="#082c46"/>
+  <circle cx="256" cy="117" r="57" fill="none" stroke="#f6bd3b" stroke-width="10"/>
+  <path d="m256 47 13 57 46 13-46 13-13 57-13-57-46-13 46-13z" fill="#f6bd3b"/>
+  <path d="M256 78v78M217 117h78" stroke="#fff7e6" stroke-width="5" stroke-linecap="round"/>
+  <text x="256" y="321" fill="#fffdf6" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="150" font-weight="800" letter-spacing="-5" text-anchor="middle">FAR</text>
+  <path d="M36 431h157l63-34 63 34h157" fill="none" stroke="#5f91d8" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M256 397v87" stroke="#f6bd3b" stroke-width="8" stroke-dasharray="13 12"/>
 </svg>`;
 
 const PWA_MARKER = '<!-- FAR PWA support -->';
@@ -65,6 +70,26 @@ self.addEventListener('fetch', (event) => {
     );
 });
 `;
+}
+
+export function buildFarManifest(shellRef) {
+    return {
+        name: 'Federal Aviation Regulations',
+        short_name: 'FAR',
+        description: 'Browsable Federal Aviation Regulations from Title 14 CFR.',
+        id: FAR_PWA_ID,
+        start_url: shellRef,
+        scope: './',
+        display: 'standalone',
+        display_override: ['standalone', 'browser'],
+        background_color: '#ffffff',
+        theme_color: FAR_THEME_COLOR,
+        lang: 'en-US',
+        icons: [
+            { src: 'icons/far-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'icons/far-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+    };
 }
 
 export function addPwaMetadata(html, {
@@ -144,23 +169,7 @@ export async function writeFarPwaFiles({
         'icons/far-512.png',
         'icons/apple-touch-icon.png'
     ];
-    const manifest = {
-        name: 'Federal Aviation Regulations',
-        short_name: 'FAR',
-        description: 'Browsable Federal Aviation Regulations from Title 14 CFR.',
-        id: shellRef,
-        start_url: shellRef,
-        scope: './',
-        display: 'standalone',
-        display_override: ['standalone', 'browser'],
-        background_color: '#ffffff',
-        theme_color: FAR_THEME_COLOR,
-        lang: 'en-US',
-        icons: [
-            { src: 'icons/far-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: 'icons/far-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-    };
+    const manifest = buildFarManifest(shellRef);
     await writeFileAtomic(path.join(baseDir, 'manifest.webmanifest'), `${JSON.stringify(manifest, null, 2)}\n`);
 
     const cacheFiles = new Set([

@@ -1,8 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import xpath from 'xpath';
-import { findReferences, rewriteLocalReferences } from '../download-aim.ts';
-import { addPwaMetadata } from '../lib/pwa.ts';
+import {
+    buildAimManifest,
+    buildAimPrecache,
+    findReferences,
+    rewriteLocalReferences
+} from '../download-aim.ts';
+import { addPwaMetadata, buildFarManifest } from '../lib/pwa.ts';
 import { isStrictChildPath } from '../lib/fs-utils.ts';
 import {
     parseCliArgs,
@@ -192,6 +197,29 @@ test('output path and PWA metadata helpers enforce safe output', () => {
     const html = addPwaMetadata('<html><head></head><body></body></html>');
     assert.match(html, /manifest\.webmanifest/);
     assert.equal(addPwaMetadata(html), html);
+});
+
+test('FAR and AIM manifests have stable, distinct PWA identities', () => {
+    const far = buildFarManifest('./index.html');
+    const aim = buildAimManifest();
+
+    assert.equal(far.id, './far-pwa');
+    assert.equal(aim.id, './aim-pwa');
+    assert.notEqual(far.id, far.start_url);
+    assert.notEqual(aim.id, aim.start_url);
+    assert.notEqual(far.id, aim.id);
+});
+
+test('AIM precache includes downloaded figures for complete offline reading', () => {
+    const precache = buildAimPrecache([
+        'index.html',
+        'css/style.css',
+        'images/aim0101_Auto0.png',
+        'images/aim0101_Auto0.png'
+    ]);
+
+    assert.ok(precache.includes('./images/aim0101_Auto0.png'));
+    assert.equal(new Set(precache).size, precache.length);
 });
 
 test('mobile FAR shell uses one right-side menu control for TOC and search', () => {

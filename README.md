@@ -74,6 +74,8 @@ The interface is designed for desktop and narrow screens. On phones and small ta
 
 Serve dist/far/ from localhost or HTTPS to test installation and service-worker behavior. Upload the complete directory for deployment; uploading only index.html will cause part-page or asset 404s.
 
+FAR and AIM use separate, product-specific manifest IDs, so browsers can install both apps from the same site without treating one as an update to the other. If either app was installed from a build created before these IDs were introduced, uninstall that older copy once before reinstalling both apps.
+
 ### FAR source options
 
 The npm script accepts the same options as build-far.ts through npm argument forwarding:
@@ -109,6 +111,8 @@ For a fully local FAR build, provide --source-xml and an explicit --date; no sou
 ## AIM mirror
 
 npm run build:aim downloads the FAA AIM HTML pages and same-site assets into dist/aim/. It rewrites local links so the mirror can be browsed from its index.html entry point and adds install metadata, icons, and a service worker.
+
+The service worker precaches the complete mirror, including all figures under images/, so the installed AIM remains fully illustrated while offline.
 
 The mirror preserves external links such as FAA publications, FAA search, and Google-hosted fonts. Service-worker installation requires localhost or HTTPS; opening the file directly from disk cannot register it.
 

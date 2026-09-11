@@ -10,7 +10,8 @@ const DEFAULT_BASE_URL = 'https://www.faa.gov/air_traffic/publications/atpubs/ai
 const DEFAULT_OUTPUT = 'dist/aim';
 const DEFAULT_CONCURRENCY = 6;
 const MAX_RETRIES = 3;
-const PWA_THEME_COLOR = '#0b3954';
+const PWA_THEME_COLOR = '#075b73';
+const AIM_PWA_ID = './aim-pwa';
 type DownloadResult = {
     url: URL;
     filePath: string;
@@ -19,10 +20,14 @@ type DownloadResult = {
 };
 const AIM_ICON_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="${PWA_THEME_COLOR}"/>
-  <circle cx="256" cy="256" r="176" fill="#fff" stroke="#f5c242" stroke-width="18"/>
-  <path d="M142 300h228M174 300v-72l82-54 82 54v72M210 300v-56h92v56" fill="none" stroke="${PWA_THEME_COLOR}" stroke-width="22" stroke-linejoin="round"/>
-  <text x="256" y="370" fill="${PWA_THEME_COLOR}" font-family="Arial, sans-serif" font-size="70" font-weight="700" text-anchor="middle">AIM</text>
+  <rect width="512" height="512" fill="${PWA_THEME_COLOR}"/>
+  <path d="M0 382 256 338l256 44v130H0z" fill="#06495e"/>
+  <path d="M166 147a104 104 0 0 1 180 0M154 126l8 35 34-11M358 126l-8 35-34-11" fill="none" stroke="#64d4e8" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m256 43 17 47-17 35-17-35z" fill="#f6bd3b"/>
+  <path d="M256 117v52" stroke="#fff7e6" stroke-width="7" stroke-linecap="round"/>
+  <text x="256" y="321" fill="#fffdf6" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="146" font-weight="800" letter-spacing="-5" text-anchor="middle">AIM</text>
+  <path d="M54 442 205 390h102l151 52M205 390l-45 94M307 390l45 94" fill="none" stroke="#64d4e8" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M256 392v92" stroke="#f6bd3b" stroke-width="8" stroke-dasharray="13 12"/>
 </svg>`;
 
 function parseArgs(argv) {
@@ -275,6 +280,38 @@ self.addEventListener('fetch', (event) => {
 `;
 }
 
+export function buildAimManifest() {
+    return {
+        name: 'Aeronautical Information Manual',
+        short_name: 'AIM',
+        description: 'FAA basic flight information and air traffic control procedures.',
+        id: AIM_PWA_ID,
+        start_url: './index.html',
+        scope: './',
+        display: 'standalone',
+        display_override: ['standalone', 'browser'],
+        background_color: '#ffffff',
+        theme_color: PWA_THEME_COLOR,
+        lang: 'en-US',
+        icons: [
+            { src: 'icons/aim-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'icons/aim-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+    };
+}
+
+export function buildAimPrecache(downloadedFiles) {
+    return [...new Set([
+        './',
+        ...downloadedFiles.map((file) => `./${file}`),
+        './manifest.webmanifest',
+        './icons/aim-icon.svg',
+        './icons/aim-192.png',
+        './icons/aim-512.png',
+        './icons/apple-touch-icon.png'
+    ])];
+}
+
 async function addPwaSupport(stagingDir, downloadedFiles, downloadedAt) {
     const pwaFiles = [
         'manifest.webmanifest',
@@ -295,37 +332,10 @@ async function addPwaSupport(stagingDir, downloadedFiles, downloadedAt) {
         icon.clone().resize(180, 180).png().toFile(path.join(iconDir, 'apple-touch-icon.png'))
     ]);
 
-    const manifest = {
-        name: 'Aeronautical Information Manual',
-        short_name: 'AIM',
-        description: 'FAA basic flight information and air traffic control procedures.',
-        id: './index.html',
-        start_url: './index.html',
-        scope: './',
-        display: 'standalone',
-        display_override: ['standalone', 'browser'],
-        background_color: '#ffffff',
-        theme_color: PWA_THEME_COLOR,
-        lang: 'en-US',
-        icons: [
-            { src: 'icons/aim-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-            { src: 'icons/aim-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-    };
+    const manifest = buildAimManifest();
     await fs.writeFile(path.join(stagingDir, 'manifest.webmanifest'), `${JSON.stringify(manifest, null, 2)}\n`);
 
-    const shellFiles = downloadedFiles
-        .filter((file) => !file.startsWith('images/'))
-        .map((file) => `./${file}`);
-    const precache = [...new Set([
-        './',
-        ...shellFiles,
-        './manifest.webmanifest',
-        './icons/aim-icon.svg',
-        './icons/aim-192.png',
-        './icons/aim-512.png',
-        './icons/apple-touch-icon.png'
-    ])];
+    const precache = buildAimPrecache(downloadedFiles);
     const cacheVersion = downloadedAt.replace(/\D/g, '');
     await fs.writeFile(
         path.join(stagingDir, 'service-worker.js'),
