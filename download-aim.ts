@@ -5,6 +5,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath, URL } from 'node:url';
 import sharp from 'sharp';
+import { addLocalSearchSupport } from './lib/aim-search.ts';
+import { relativeOutputReference } from './lib/fs-utils.ts';
 
 const DEFAULT_BASE_URL = 'https://www.faa.gov/air_traffic/publications/atpubs/aim_html/';
 const DEFAULT_OUTPUT = 'dist/aim';
@@ -225,13 +227,6 @@ function outputPathFor(filePath, stagingDir) {
     const root = path.resolve(stagingDir) + path.sep;
     if (!absolute.startsWith(root)) throw new Error(`Refusing to write outside staging directory: ${filePath}`);
     return absolute;
-}
-
-function relativeOutputReference(sourceFile, targetFile) {
-    let reference = path.posix.relative(path.posix.dirname(sourceFile), targetFile);
-    if (!reference) reference = path.posix.basename(targetFile);
-    if (!reference.startsWith('.')) reference = `./${reference}`;
-    return reference;
 }
 
 function buildServiceWorker({ cacheName, precache }) {
@@ -468,13 +463,19 @@ async function downloadAim({ baseUrl, output, concurrency, clean }) {
         }
 
         const downloadedAt = new Date().toISOString();
-        const pwaFiles = await addPwaSupport(stagingDir, [...seen], downloadedAt);
+        const localSearch = await addLocalSearchSupport(stagingDir, [...seen]);
+        const siteFiles = [...seen, ...localSearch.searchFiles];
+        const pwaFiles = await addPwaSupport(stagingDir, siteFiles, downloadedAt);
         const manifest = {
             source: baseUrl.href,
             downloadedAt,
             files: [...seen].sort(),
             fileCount: seen.size,
             bytes: totalBytes,
+            localSearch: {
+                entryCount: localSearch.entryCount,
+                files: localSearch.searchFiles
+            },
             pwaFiles
         };
         await fs.writeFile(path.join(stagingDir, 'download-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

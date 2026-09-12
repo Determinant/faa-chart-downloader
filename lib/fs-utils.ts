@@ -5,6 +5,13 @@ export function toPosixPath(value) {
     return String(value).split(path.sep).join('/');
 }
 
+export function relativeOutputReference(sourceFile, targetFile) {
+    let reference = path.posix.relative(path.posix.dirname(sourceFile), targetFile);
+    if (!reference) reference = path.posix.basename(targetFile);
+    if (!reference.startsWith('.')) reference = `./${reference}`;
+    return reference;
+}
+
 export function isStrictChildPath(parent, candidate) {
     const relative = path.relative(parent, candidate);
     return Boolean(relative)

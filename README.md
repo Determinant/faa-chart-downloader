@@ -110,11 +110,11 @@ For a fully local FAR build, provide --source-xml and an explicit --date; no sou
 
 ## AIM mirror
 
-npm run build:aim downloads the FAA AIM HTML pages and same-site assets into dist/aim/. It rewrites local links so the mirror can be browsed from its index.html entry point and adds install metadata, icons, and a service worker.
+npm run build:aim downloads the FAA AIM HTML pages and same-site assets into dist/aim/. It rewrites local links so the mirror can be browsed from its index.html entry point, replaces the FAA-hosted search form with an offline full-text search of the downloaded manual, and adds install metadata, icons, and a service worker.
 
 The service worker precaches the complete mirror, including all figures under images/, so the installed AIM remains fully illustrated while offline.
 
-The mirror preserves external links such as FAA publications, FAA search, and Google-hosted fonts. Service-worker installation requires localhost or HTTPS; opening the file directly from disk cannot register it.
+The mirror preserves external links such as FAA publications and Google-hosted fonts. Like FAR search, AIM search indexes its generated corpus in the browser with the bundled MiniSearch library; it stays inside the mirror and also works when the files are opened directly from disk. Service-worker installation requires localhost or HTTPS; opening the file directly from disk cannot register it.
 
 Options are available with:
 

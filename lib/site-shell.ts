@@ -1,4 +1,5 @@
 import { FAR_NARROW_BREAKPOINT } from './config.ts';
+import { LOCAL_SEARCH_CLIENT_CORE_JS } from './local-search-client.ts';
 import { seqnumIdFromSectno } from './xml-index.ts';
 
 function escapeHtml(value) {
@@ -140,13 +141,7 @@ const SHELL_SEARCH_SCRIPT = `  <script>
       var searchContentAvailable = documents.some(function (entry) { return String(entry.text || '').trim().length > 0; });
       var lastDrawerTrigger = null;
 
-      function normalizeSearchText(value) {
-        return String(value || '').toLocaleLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').replace(/\\s+/g, ' ').trim();
-      }
-
-      function queryTokens(value) {
-        return normalizeSearchText(value).split(' ').filter(Boolean);
-      }
+${LOCAL_SEARCH_CLIENT_CORE_JS}
 
       function targetPath(target) {
         return String(target || '').split('#')[0];
@@ -171,21 +166,7 @@ const SHELL_SEARCH_SCRIPT = `  <script>
       }
 
       function buildSearchEngine() {
-        if (typeof MiniSearch !== 'function') return;
-
-        searchEngine = new MiniSearch({
-          fields: ['title', 'context', 'text'],
-          storeFields: ['target', 'sectno', 'subject', 'partHeading', 'subpart', 'subjectGroup', 'title', 'context', 'text'],
-          tokenize: queryTokens,
-          searchOptions: {
-            combineWith: 'AND',
-            prefix: true,
-            fuzzy: 0.2,
-            boost: { title: 3, context: 1.5 }
-          }
-        });
-
-        searchEngine.addAll(documents.map(function (entry, index) {
+        searchEngine = buildLocalSearchEngine(documents.map(function (entry, index) {
           return {
             id: index,
             target: entry.target,
@@ -198,7 +179,7 @@ const SHELL_SEARCH_SCRIPT = `  <script>
             context: [entry.partHeading, entry.subpart, entry.subjectGroup].filter(Boolean).join(' · '),
             text: entry.text || ''
           };
-        }));
+        }), ['target', 'sectno', 'subject', 'partHeading', 'subpart', 'subjectGroup', 'title', 'context', 'text']);
       }
 
       function hydrateFromPartPages() {
@@ -300,25 +281,6 @@ const SHELL_SEARCH_SCRIPT = `  <script>
         }
       });
 
-      function snippet(text, tokens) {
-        var value = String(text || '').replace(/\\s+/g, ' ').trim();
-        if (!value) return '';
-        var lower = value.toLocaleLowerCase();
-        var hit = -1;
-        tokens.some(function (token) {
-          var candidate = lower.indexOf(token);
-          if (candidate !== -1 && (hit === -1 || candidate < hit)) hit = candidate;
-          return candidate === 0;
-        });
-        if (hit < 0) hit = 0;
-        var start = Math.max(0, hit - 62);
-        var end = Math.min(value.length, start + 190);
-        var result = value.slice(start, end);
-        if (start > 0) result = '…' + result;
-        if (end < value.length) result += '…';
-        return result;
-      }
-
       function search(value) {
         var raw = String(value || '').trim();
         clearButton.hidden = !raw;
@@ -350,14 +312,7 @@ const SHELL_SEARCH_SCRIPT = `  <script>
           return;
         }
 
-        var rawSearch = normalizeSearchText(raw);
-        var matches = searchEngine.search(raw).map(function (result) {
-          var titleSearch = normalizeSearchText([result.title, result.context].filter(Boolean).join(' '));
-          var score = result.score + (titleSearch.indexOf(rawSearch) !== -1 ? 100 : 0);
-          return { result: result, score: score };
-        });
-        matches.sort(function (left, right) { return right.score - left.score; });
-        matches = matches.slice(0, 50);
+        var matches = rankLocalSearchResults(searchEngine, raw).slice(0, LOCAL_SEARCH_RESULT_LIMIT);
         status.textContent = searchContentAvailable
           ? matches.length + (matches.length === 1 ? ' result' : ' results')
           : 'Full-text search data is unavailable. Rebuild the FAR site.';
@@ -382,7 +337,7 @@ const SHELL_SEARCH_SCRIPT = `  <script>
 
           var excerpt = document.createElement('span');
           excerpt.className = 'search-result-snippet';
-          excerpt.textContent = snippet(result.text, tokens);
+          excerpt.textContent = searchResultSnippet(result.text, tokens);
           button.appendChild(excerpt);
 
           button.addEventListener('click', function () {
