@@ -19,6 +19,7 @@
     "build-far.ts",
     "download-aim.ts",
     "download-charts.ts",
+    "download-nasr.ts",
     "lib/**/*.ts",
     "test/**/*.ts",
     "types/**/*.d.ts"

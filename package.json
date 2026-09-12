@@ -11,6 +11,7 @@
     "build": "node --import=tsx build-far.ts --combined=dist/far/combined.xml --far=dist/far/far.xml --html=dist/far/index.html --parts-dir=dist/far/far-parts",
     "build:aim": "node --import=tsx download-aim.ts --output=dist/aim --clean",
     "build:charts": "node --import=tsx download-charts.ts --output=dist",
+    "build:nasr": "node --import=tsx download-nasr.ts --output=dist",
     "check": "tsc --noEmit",
     "test": "node --import=tsx --test",
     "download-aim": "node --import=tsx download-aim.ts --output=dist/aim",
@@ -18,16 +19,15 @@
   },
   "dependencies": {
     "@xmldom/xmldom": "^0.9.12",
-    "decompress": "^4.2.1",
     "js-treeview": "^1.1.5",
     "jsdom": "^25.0.0",
     "minisearch": "^7.2.0",
     "sharp": "^0.35.4",
+    "tsx": "^4.23.12",
     "xpath": "^0.0.34"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
-    "tsx": "^4.23.12",
     "typescript": "^7.0.2"
   }
 }

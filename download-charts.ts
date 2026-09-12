@@ -5,8 +5,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import decompress from 'decompress';
 import { JSDOM } from 'jsdom';
+import { buildNasrData } from './download-nasr.ts';
+import { writeFileAtomic } from './lib/fs-utils.ts';
+import { extractZipEntry, listZipEntries, validateZipArchive } from './lib/zip.ts';
 
 const CS_URL = 'https://aeronav.faa.gov/upload_313-d/supplements/';
 const TPP_URL = 'https://aeronav.faa.gov/upload_313-d/terminal/';
@@ -87,7 +89,7 @@ function parseArgs(argv: string[]): Options {
 function printHelp(): void {
     console.log(`Usage: node --import=tsx download-charts.ts [options]
 
-Downloads the current FAA charts and produces WebP MBTiles for raster charts.
+Downloads current FAA charts, produces WebP MBTiles, and builds NASR map data.
 
 Options:
   --output=DIR     Build root (default: dist)
@@ -97,6 +99,8 @@ Options:
 Output layout:
   DIR/charts/      PDFs, GeoTIFFs, and MBTiles grouped by publication date
   DIR/zips/        Downloaded source ZIP archives grouped by publication date
+  DIR/charts/YYYY-MM-DD/nav/   Normalized NASR map data
+  DIR/charts/YYYY-MM-DD/nasr/  Downloaded NASR CSV ZIP archives
 
 Example:
   npm run build:charts
@@ -181,12 +185,44 @@ async function fetchDom(url: string): Promise<any> {
     return new JSDOM(await response.text(), { url });
 }
 
+async function validateChartDownload(filePath: string): Promise<void> {
+    const extension = path.extname(filePath).toLowerCase();
+    if (extension === '.zip') {
+        await validateZipArchive(filePath);
+        return;
+    }
+    if (extension === '.pdf') {
+        const handle = await fs.open(filePath, 'r');
+        try {
+            const magic = Buffer.alloc(5);
+            const { bytesRead } = await handle.read(magic, 0, magic.length, 0);
+            if (bytesRead !== magic.length || magic.toString('ascii') !== '%PDF-') {
+                throw new Error(`Downloaded file is not a PDF: ${filePath}`);
+            }
+        } finally {
+            await handle.close();
+        }
+    }
+}
+
 async function downloadFile(url: string, destination: string): Promise<boolean> {
     try {
         const stat = await fs.stat(destination);
-        if (stat.isFile()) {
-            console.log(`file "${destination}" already exists`);
-            return true;
+        if (!stat.isFile()) throw new Error(`Cached chart download is not a file: ${destination}`);
+        if (stat.size === 0) {
+            console.warn(`replacing empty cached chart download "${destination}"`);
+            await fs.rm(destination, { force: true });
+        } else {
+            try {
+                await validateChartDownload(destination);
+                console.log(`file "${destination}" already exists`);
+                return true;
+            } catch (error: any) {
+                console.warn(
+                    `replacing invalid cached chart download "${destination}": ${error.message}`
+                );
+                await fs.rm(destination, { force: true });
+            }
         }
     } catch (error: any) {
         if (error.code !== 'ENOENT') throw error;
@@ -202,8 +238,13 @@ async function downloadFile(url: string, destination: string): Promise<boolean> 
         throw new Error(`FAA request failed (${response.status} ${response.statusText}): ${url}`);
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
-    await fs.mkdir(path.dirname(destination), { recursive: true });
-    await fs.writeFile(destination, bytes);
+    await writeFileAtomic(destination, bytes);
+    try {
+        await validateChartDownload(destination);
+    } catch (error) {
+        await fs.rm(destination, { force: true });
+        throw error;
+    }
     return true;
 }
 
@@ -347,7 +388,6 @@ async function discoverCharts(): Promise<ChartGroup[]> {
 
 async function extractChart(
     archivePath: string,
-    outputRoot: string,
     chartRoot: string,
     date: string,
     group: ChartGroup,
@@ -357,16 +397,17 @@ async function extractChart(
     const chartPrefix = `${group.prefix}-${region.toLowerCase()}`;
 
     console.log(`extracting "${archivePath}"`);
-    await decompress(archivePath, outputRoot, {
-        filter: (entry: any) => unzip[normalizeArchivePath(entry.path)] != null,
-        map: (entry: any) => {
-            const sourceName = normalizeArchivePath(entry.path);
-            const suffix = unzip[sourceName];
-            const chartFilePath = path.join(chartRoot, date, `${chartPrefix}${suffix}`);
-            entry.path = path.relative(outputRoot, chartFilePath).split(path.sep).join('/');
-            return entry;
+    const entries = await listZipEntries(archivePath);
+    for (const [sourceName, suffix] of Object.entries(unzip)) {
+        const matches = entries.filter(entry => normalizeArchivePath(entry) === sourceName);
+        if (matches.length !== 1) {
+            throw new Error(
+                `${path.basename(archivePath)} contains ${matches.length} entries for ${sourceName}`
+            );
         }
-    });
+        const chartFilePath = path.join(chartRoot, date, `${chartPrefix}${suffix}`);
+        await extractZipEntry(archivePath, matches[0], chartFilePath);
+    }
 }
 
 async function runCommand(command: string, args: string[]): Promise<{ stdout: string; stderr: string }> {
@@ -512,7 +553,6 @@ async function buildCharts(options: Options): Promise<void> {
             if (current.unzip && available) {
                 await extractChart(
                     sourcePath,
-                    outputRoot,
                     chartRoot,
                     current.date,
                     group,
@@ -524,6 +564,7 @@ async function buildCharts(options: Options): Promise<void> {
     }
 
     await tileCharts(chartRoot);
+    await buildNasrData({ output: options.output });
     console.log(`Charts are ready under ${chartRoot}`);
 }
 
